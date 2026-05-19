@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import './index.css';
 import { Navigate, Outlet, Route, Routes, useNavigate } from 'react-router-dom';
 import Layout from './components/Layout';
@@ -8,16 +8,27 @@ import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Profile from './pages/Profile';
 
+// Defined OUTSIDE App so its function reference never changes between renders.
+// If it were inside App, every navigation would cause App to re-render (via useNavigate),
+// creating a new ProtectedLayout function, which makes React unmount+remount Layout
+// entirely — triggering a fresh fetchTasks on every page change (the scroll jump bug).
+const ProtectedLayout = ({ currentUser, onLogout }) => {
+    if (!currentUser) return <Navigate to="/login" replace />;
+    return (
+        <Layout user={currentUser} onLogout={onLogout}>
+            <Outlet />
+        </Layout>
+    );
+};
+
 const App = () => {
     const navigate = useNavigate();
 
-    // Restore user from localStorage on refresh (persistent login)
     const [currentUser, setCurrentUser] = useState(() => {
         const stored = localStorage.getItem('currentUser');
         return stored ? JSON.parse(stored) : null;
     });
 
-    // Keep localStorage in sync with state
     useEffect(() => {
         if (currentUser) {
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
@@ -26,8 +37,6 @@ const App = () => {
         }
     }, [currentUser]);
 
-    // Called after successful login or register
-    // FIX: now also receives and saves the token — previously token was never stored
     const handleAuthSubmit = (userData) => {
         const user = {
             id: userData.id,
@@ -39,25 +48,13 @@ const App = () => {
         navigate('/', { replace: true });
     };
 
-    const handleLogout = () => {
+    // useCallback keeps this reference stable so Layout's fetchTasks dep doesn't change
+    const handleLogout = useCallback(() => {
         localStorage.removeItem('token');
         localStorage.removeItem('currentUser');
         setCurrentUser(null);
         navigate('/login', { replace: true });
-    };
-
-    // FIX: ProtectedLayout was missing return — it was an arrow function with a block body
-    // that returned undefined. Adding return makes it render correctly.
-    const ProtectedLayout = () => {
-        if (!currentUser) {
-            return <Navigate to="/login" replace />;
-        }
-        return (
-            <Layout user={currentUser} onLogout={handleLogout}>
-                <Outlet />
-            </Layout>
-        );
-    };
+    }, [navigate]);
 
     return (
         <Routes>
@@ -81,9 +78,8 @@ const App = () => {
                     )
             } />
 
-            {/* FIX: removed duplicate <Route path="/"> — now single protected layout route */}
-            <Route path="/" element={<ProtectedLayout />}>
-                <Route index          element={<Dashboard />} />
+            <Route path="/" element={<ProtectedLayout currentUser={currentUser} onLogout={handleLogout} />}>
+                <Route index        element={<Dashboard />} />
                 <Route path="tasks"   element={<Tasks />} />
                 <Route path="profile" element={<Profile />} />
             </Route>
