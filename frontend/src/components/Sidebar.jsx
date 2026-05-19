@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, CheckSquare, User, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, User, Users, ChevronRight } from 'lucide-react';
 
 const Sidebar = ({ user, tasks = [], mobileOpen = false, onMobileClose }) => {
     const [collapsed, setCollapsed] = useState(false);
@@ -8,6 +8,7 @@ const Sidebar = ({ user, tasks = [], mobileOpen = false, onMobileClose }) => {
     const navItems = [
         { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
         { to: '/tasks', label: 'My Tasks', icon: CheckSquare },
+        { to: '/team', label: 'Team', icon: Users },
         { to: '/profile', label: 'Profile', icon: User },
     ];
 

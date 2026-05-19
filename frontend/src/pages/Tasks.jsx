@@ -14,11 +14,11 @@ const priorityColors = {
     Low:    'bg-green-100 text-green-700 border-green-200',
 };
 
-const emptyForm = { title: '', description: '', priority: 'Low', dueDate: '' };
+const emptyForm = { title: '', description: '', priority: 'Low', dueDate: '', assignedTo: '' };
 
 // ─── Task Form Modal ───────────────────────────────────────────────────────────
 
-const TaskModal = ({ initial, onClose, onSave, loading }) => {
+const TaskModal = ({ initial, onClose, onSave, loading, workspaceMembers = [] }) => {
     const [form, setForm] = useState(initial || emptyForm);
     const [error, setError] = useState('');
 
@@ -36,7 +36,6 @@ const TaskModal = ({ initial, onClose, onSave, loading }) => {
     return (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-                {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h2 className="text-base font-bold text-gray-800">
                         {initial?._id ? 'Edit Task' : 'New Task'}
@@ -46,7 +45,6 @@ const TaskModal = ({ initial, onClose, onSave, loading }) => {
                     </button>
                 </div>
 
-                {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     {error && (
                         <div className="px-4 py-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-lg">
@@ -72,7 +70,7 @@ const TaskModal = ({ initial, onClose, onSave, loading }) => {
                             name="description"
                             value={form.description}
                             onChange={handleChange}
-                            rows={3}
+                            rows={2}
                             placeholder="Optional details..."
                             className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 transition resize-none"
                         />
@@ -90,7 +88,6 @@ const TaskModal = ({ initial, onClose, onSave, loading }) => {
                                 {PRIORITIES.map(p => <option key={p}>{p}</option>)}
                             </select>
                         </div>
-
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
                             <input
@@ -103,7 +100,25 @@ const TaskModal = ({ initial, onClose, onSave, loading }) => {
                         </div>
                     </div>
 
-                    <div className="flex gap-3 pt-2">
+                    {/* Assign To */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+                        <select
+                            name="assignedTo"
+                            value={form.assignedTo}
+                            onChange={handleChange}
+                            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 transition bg-white"
+                        >
+                            <option value="">Unassigned</option>
+                            {workspaceMembers.map(m => (
+                                <option key={m.id} value={m.name}>
+                                    {m.name} — {m.role}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="flex gap-3 pt-1">
                         <button
                             type="button"
                             onClick={onClose}
@@ -167,6 +182,18 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete }) => {
                             </span>
                         )}
                     </div>
+
+                    {/* Assigned member */}
+                    {task.assignedTo && (
+                        <div className="flex items-center gap-1.5 mt-2">
+                            <img
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(task.assignedTo)}&size=20&bold=true&color=fff&background=random`}
+                                alt={task.assignedTo}
+                                className="w-5 h-5 rounded-full flex-shrink-0"
+                            />
+                            <span className="text-xs text-gray-500">{task.assignedTo}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}
@@ -194,7 +221,7 @@ const TaskCard = ({ task, onToggle, onEdit, onDelete }) => {
 // ─── Tasks Page ────────────────────────────────────────────────────────────────
 
 const Tasks = () => {
-    const { tasks, refreshTasks } = useOutletContext();
+    const { tasks, refreshTasks, workspaceMembers = [] } = useOutletContext();
 
     const [showModal, setShowModal]     = useState(false);
     const [editingTask, setEditingTask] = useState(null);
@@ -203,7 +230,6 @@ const Tasks = () => {
     const [filterStatus, setFilterStatus]     = useState('All');
     const [filterPriority, setFilterPriority] = useState('All');
 
-    // ── Filtered list ──────────────────────────────────────────────────────────
     const filtered = tasks.filter(t => {
         const matchSearch = t.title.toLowerCase().includes(search.toLowerCase());
         const matchStatus =
@@ -215,7 +241,6 @@ const Tasks = () => {
         return matchSearch && matchStatus && matchPriority;
     });
 
-    // ── Create ─────────────────────────────────────────────────────────────────
     const handleCreate = async (form) => {
         setMutating(true);
         try {
@@ -229,7 +254,6 @@ const Tasks = () => {
         }
     };
 
-    // ── Update ─────────────────────────────────────────────────────────────────
     const handleUpdate = async (form) => {
         setMutating(true);
         try {
@@ -243,7 +267,6 @@ const Tasks = () => {
         }
     };
 
-    // ── Toggle complete ────────────────────────────────────────────────────────
     const handleToggle = async (task) => {
         try {
             await api.put(`/task/${task._id}/gp`, { completed: !task.completed });
@@ -253,7 +276,6 @@ const Tasks = () => {
         }
     };
 
-    // ── Delete ─────────────────────────────────────────────────────────────────
     const handleDelete = async (id) => {
         if (!window.confirm('Delete this task?')) return;
         try {
@@ -267,7 +289,8 @@ const Tasks = () => {
     const openEdit = (task) => {
         setEditingTask({
             ...task,
-            dueDate: task.dueDate ? task.dueDate.slice(0, 10) : ''
+            dueDate: task.dueDate ? task.dueDate.slice(0, 10) : '',
+            assignedTo: task.assignedTo || '',
         });
     };
 
@@ -281,8 +304,7 @@ const Tasks = () => {
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500
-                    text-white text-sm font-semibold rounded-xl hover:opacity-90 transition shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-fuchsia-500 via-purple-500 to-indigo-500 text-white text-sm font-semibold rounded-xl hover:opacity-90 transition shadow-sm"
                 >
                     <Plus className="w-4 h-4" />
                     New Task
@@ -291,7 +313,6 @@ const Tasks = () => {
 
             {/* Filters */}
             <div className="flex flex-wrap gap-3">
-                {/* Search */}
                 <input
                     type="text"
                     placeholder="Search tasks..."
@@ -299,8 +320,6 @@ const Tasks = () => {
                     onChange={e => setSearch(e.target.value)}
                     className="flex-1 min-w-[180px] px-4 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
                 />
-
-                {/* Status filter */}
                 <div className="relative">
                     <select
                         value={filterStatus}
@@ -311,8 +330,6 @@ const Tasks = () => {
                     </select>
                     <ChevronDown className="absolute right-3 top-2.5 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
-
-                {/* Priority filter */}
                 <div className="relative">
                     <select
                         value={filterPriority}
@@ -329,15 +346,10 @@ const Tasks = () => {
             {filtered.length === 0 ? (
                 <div className="text-center py-16 bg-white rounded-2xl border border-gray-100">
                     <p className="text-gray-400 text-sm">
-                        {tasks.length === 0
-                            ? 'No tasks yet. Create your first task!'
-                            : 'No tasks match your filters.'}
+                        {tasks.length === 0 ? 'No tasks yet. Create your first task!' : 'No tasks match your filters.'}
                     </p>
                     {tasks.length === 0 && (
-                        <button
-                            onClick={() => setShowModal(true)}
-                            className="mt-3 text-sm text-purple-600 hover:underline font-medium"
-                        >
+                        <button onClick={() => setShowModal(true)} className="mt-3 text-sm text-purple-600 hover:underline font-medium">
                             + Create task
                         </button>
                     )}
@@ -345,33 +357,27 @@ const Tasks = () => {
             ) : (
                 <div className="space-y-3">
                     {filtered.map(task => (
-                        <TaskCard
-                            key={task._id}
-                            task={task}
-                            onToggle={handleToggle}
-                            onEdit={openEdit}
-                            onDelete={handleDelete}
-                        />
+                        <TaskCard key={task._id} task={task} onToggle={handleToggle} onEdit={openEdit} onDelete={handleDelete} />
                     ))}
                 </div>
             )}
 
-            {/* Create Modal */}
             {showModal && (
                 <TaskModal
                     onClose={() => setShowModal(false)}
                     onSave={handleCreate}
                     loading={mutating}
+                    workspaceMembers={workspaceMembers}
                 />
             )}
 
-            {/* Edit Modal */}
             {editingTask && (
                 <TaskModal
                     initial={editingTask}
                     onClose={() => setEditingTask(null)}
                     onSave={handleUpdate}
                     loading={mutating}
+                    workspaceMembers={workspaceMembers}
                 />
             )}
         </div>

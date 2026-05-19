@@ -26,6 +26,10 @@ const taskSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    assignedTo: {
+        type: String,
+        default: ''
+    },
     createdAt: {
         type: Date,
         default: Date.now

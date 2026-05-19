@@ -4,11 +4,64 @@ import Sidebar from './Sidebar';
 import { Outlet } from 'react-router-dom';
 import api from '../services/api';
 
+const WORKSPACE_KEY = 'taskpilot_workspace';
+
+const DEFAULT_MEMBERS = [
+    { id: 'demo-1', name: 'Alice Johnson',  role: 'Designer',        avatar: 'https://ui-avatars.com/api/?name=Alice+Johnson&background=ec4899&color=fff&bold=true' },
+    { id: 'demo-2', name: 'Bob Smith',      role: 'Developer',       avatar: 'https://ui-avatars.com/api/?name=Bob+Smith&background=3b82f6&color=fff&bold=true' },
+    { id: 'demo-3', name: 'Carol Williams', role: 'Product Manager',  avatar: 'https://ui-avatars.com/api/?name=Carol+Williams&background=f97316&color=fff&bold=true' },
+];
+
 const Layout = ({ onLogout, user }) => {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    // Workspace members stored in localStorage; seeded with demo members on first visit
+    const [extraMembers, setExtraMembers] = useState(() => {
+        try {
+            const stored = localStorage.getItem(WORKSPACE_KEY);
+            if (stored !== null) return JSON.parse(stored);
+            localStorage.setItem(WORKSPACE_KEY, JSON.stringify(DEFAULT_MEMBERS));
+            return DEFAULT_MEMBERS;
+        } catch { return DEFAULT_MEMBERS; }
+    });
+
+    // Current user is always the Owner at position 0
+    const workspaceMembers = useMemo(() => {
+        const owner = user ? {
+            id: user.id,
+            name: user.name,
+            role: 'Owner',
+            avatar: user.avatar,
+            isCurrentUser: true,
+        } : null;
+        return owner ? [owner, ...extraMembers] : extraMembers;
+    }, [user, extraMembers]);
+
+    const addWorkspaceMember = useCallback((name, role) => {
+        const member = {
+            id: `m-${Date.now()}`,
+            name,
+            role: role || 'Member',
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random&color=fff&bold=true`,
+            isCurrentUser: false,
+        };
+        setExtraMembers(prev => {
+            const updated = [...prev, member];
+            localStorage.setItem(WORKSPACE_KEY, JSON.stringify(updated));
+            return updated;
+        });
+    }, []);
+
+    const removeWorkspaceMember = useCallback((id) => {
+        setExtraMembers(prev => {
+            const updated = prev.filter(m => m.id !== id);
+            localStorage.setItem(WORKSPACE_KEY, JSON.stringify(updated));
+            return updated;
+        });
+    }, []);
 
     const fetchTasks = useCallback(async () => {
         setLoading(true);
@@ -45,7 +98,6 @@ const Layout = ({ onLogout, user }) => {
             <Navbar user={user} onLogout={onLogout} onMenuToggle={() => setSidebarOpen(p => !p)} />
             <Sidebar user={user} tasks={tasks} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
 
-            {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
                     className="fixed inset-0 z-30 bg-black/30 md:hidden"
@@ -63,7 +115,10 @@ const Layout = ({ onLogout, user }) => {
                             {error}
                         </div>
                     )}
-                    <Outlet context={{ tasks, stats, refreshTasks: fetchTasks }} />
+                    <Outlet context={{
+                        tasks, stats, refreshTasks: fetchTasks,
+                        workspaceMembers, addWorkspaceMember, removeWorkspaceMember,
+                    }} />
                 </div>
             </div>
         </div>

@@ -7,6 +7,7 @@ import SignUp from './components/SignUp';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Profile from './pages/Profile';
+import Team from './pages/Team';
 
 // Defined OUTSIDE App so its function reference never changes between renders.
 // If it were inside App, every navigation would cause App to re-render (via useNavigate),
@@ -79,8 +80,9 @@ const App = () => {
             } />
 
             <Route path="/" element={<ProtectedLayout currentUser={currentUser} onLogout={handleLogout} />}>
-                <Route index        element={<Dashboard />} />
+                <Route index          element={<Dashboard />} />
                 <Route path="tasks"   element={<Tasks />} />
+                <Route path="team"    element={<Team />} />
                 <Route path="profile" element={<Profile />} />
             </Route>
         </Routes>
