@@ -2,7 +2,7 @@
 
 A full-stack, multi-user task and team management platform built with the MERN stack. Created as the capstone deliverable of my Full-Stack Web Development Internship at **Altruisty Innovation Pvt Ltd** (Jun – Aug 2025).
 
-**Live:** https://taskpilot-wine-phi.vercel.app/
+**Live:** https://taskpilot-wine-phi.vercel.app/ ( ⚠️ As maintainence is underway to switch free tier clusters on the backend deployment , the application might not work properly ) 
 
 ---
 
